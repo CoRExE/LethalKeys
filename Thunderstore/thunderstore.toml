@@ -1,0 +1,25 @@
+# Configuration de tcli (Thunderstore CLI), utilisée par le workflow pour publier le .zip.
+# Le paquet est construit par MSBuild (dotnet build -c Release) puis envoyé avec :
+#   tcli publish --config-path Thunderstore/thunderstore.toml --file dist/LethalKeys-X.Y.Z.zip --token <jeton>
+# Nom, description, lien et dépendances publiés viennent du manifest.json inclus dans le .zip
+# (Thunderstore/manifest.template.json). Ici ne comptent que l'équipe, la communauté et les catégories.
+
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "UnamedGames"
+name = "LethalKeys"
+versionNumber = "0.0.0" # ignoré avec --file : la version vient du manifest.json du .zip
+description = "Voir manifest.template.json"
+websiteUrl = "https://github.com/CoRExE/LethalKeys"
+containsNsfwContent = false
+
+[package.dependencies]
+
+[publish]
+repository = "https://thunderstore.io"
+communities = ["lethal-company"]
+
+[publish.categories]
+lethal-company = ["mods", "clientside", "misc"]

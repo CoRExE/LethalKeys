@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- LethalConfig is now a dependency, so the in-game settings menu is installed automatically.
+- Added a link to the source code (GitHub).
+
 ## 0.1.0
 
 - First release.

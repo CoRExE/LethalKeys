@@ -32,8 +32,8 @@ LethalKeys is **client-side**: it only changes the keys of the player who dies. 
 
 ## Configuration
 
-Install [LethalConfig](https://thunderstore.io/c/lethal-company/p/AinaVT/LethalConfig/) for an in-game menu,
-or edit `BepInEx/config/lethalkeys.cfg`.
+Open the in-game menu from [LethalConfig](https://thunderstore.io/c/lethal-company/p/AinaVT/LethalConfig/)
+(installed automatically with the mod), or edit `BepInEx/config/lethalkeys.cfg`.
 
 | Section | Content |
 |---|---|
@@ -53,4 +53,6 @@ or edit `BepInEx/config/lethalkeys.cfg`.
 
 **À chaque mort, une de tes touches est réassignée au hasard.** Clavier et souris, sans conflit, et pour toute
 la durée de la partie. Tout revient à la normale quand l'équipage est renvoyé.
-Seul le joueur qui meurt est concerné. Les touches sont gardées avec la sauvegarde, et le menu en jeu est disponible avec LethalConfig.
+Seul le joueur qui meurt est concerné. Les touches sont gardées avec la sauvegarde, et le menu en jeu passe par LethalConfig, installé automatiquement.
+
+Source : [github.com/CoRExE/LethalKeys](https://github.com/CoRExE/LethalKeys)

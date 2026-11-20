@@ -22,5 +22,12 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-Le workflow [Build](.github/workflows/build.yml) compile en version `0.2.0` et crée une **release GitHub** avec le `.zip`
-Thunderstore. Ce `.zip` est ensuite à envoyer à la main sur thunderstore.io. Chaque push sur `main` produit aussi le `.zip` en artefact du run.
+Le workflow [Build](.github/workflows/build.yml) :
+1. vérifie qu'il existe une section `## 0.2.0` dans `Thunderstore/CHANGELOG.md` ;
+2. compile en version `0.2.0` et crée une **release GitHub** avec le `.zip` ;
+3. **publie sur Thunderstore** (`UnamedGames-LethalKeys`) avec `tcli`, si le secret `TCLI_AUTH_TOKEN` existe.
+   Les catégories et la communauté sont dans [Thunderstore/thunderstore.toml](Thunderstore/thunderstore.toml).
+
+Chaque push sur `main` produit aussi le `.zip` en artefact du run.
+
+Une version publiée sur Thunderstore est **définitive** : pour corriger, il faut un nouveau numéro.

@@ -1,6 +1,11 @@
 # Compile LethalKeys et produit le paquet Thunderstore.
 #  - push sur main / pull request : build + .zip en artefact du run
 #  - push d'un tag vX.Y.Z           : build en version X.Y.Z + release GitHub avec le .zip
+#                                     + publication sur Thunderstore (si le secret TCLI_AUTH_TOKEN existe)
+#
+# Secret TCLI_AUTH_TOKEN : jeton d'un « Service Account » de l'équipe Thunderstore
+# (thunderstore.io → Settings → Teams → UnamedGames → Service Accounts), à ranger dans
+# GitHub → Settings → Secrets and variables → Actions.
 #
 # Les DLL du jeu ne sont pas disponibles ici : le csproj utilise alors les paquets NuGet
 # LethalCompany.GameLibs.Steam / BepInEx.Core / UnityEngine.Modules (UseLocalGameLibs=false).
@@ -18,6 +23,7 @@ permissions:
 
 env:
   LETHALCONFIG_VERSION: "1.4.6"
+  TCLI_VERSION: "0.2.4"
 
 jobs:
   build:
@@ -44,6 +50,16 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Version : $VERSION"
+
+      # Une version publiée sur Thunderstore est définitive : on exige une entrée de changelog avant.
+      - name: Vérifier le changelog
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          grep -q "^## ${{ steps.version.outputs.version }}\$" Thunderstore/CHANGELOG.md || {
+            echo "::error::Ajoute une section '## ${{ steps.version.outputs.version }}' dans Thunderstore/CHANGELOG.md avant de tagger."
+            exit 1
+          }
 
       # Dépendance optionnelle : seulement nécessaire pour compiler (non incluse dans le paquet).
       - name: Télécharger LethalConfig ${{ env.LETHALCONFIG_VERSION }}
@@ -75,3 +91,19 @@ jobs:
         with:
           files: dist/LethalKeys-${{ steps.version.outputs.version }}.zip
           generate_release_notes: true
+
+      - name: Publier sur Thunderstore
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          TCLI_AUTH_TOKEN: ${{ secrets.TCLI_AUTH_TOKEN }}
+        run: |
+          if [ -z "$TCLI_AUTH_TOKEN" ]; then
+            echo "::warning::Secret TCLI_AUTH_TOKEN absent : publication Thunderstore ignorée (le .zip est dans la release GitHub)."
+            exit 0
+          fi
+          dotnet tool install --global tcli --version "$TCLI_VERSION"
+          tcli publish \
+            --config-path Thunderstore/thunderstore.toml \
+            --file "dist/LethalKeys-${{ steps.version.outputs.version }}.zip" \
+            --token "$TCLI_AUTH_TOKEN"
