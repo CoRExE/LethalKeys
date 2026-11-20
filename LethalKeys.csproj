@@ -1,0 +1,89 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>LethalKeys</AssemblyName>
+    <RootNamespace>LethalKeys</RootNamespace>
+    <Version>0.1.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <!-- Chemins locaux : à surcharger dans LethalKeys.csproj.user si besoin -->
+  <PropertyGroup>
+    <GameDir Condition="'$(GameDir)' == ''">E:\SteamLibrary\steamapps\common\Lethal Company</GameDir>
+    <ManagedDir>$(GameDir)\Lethal Company_Data\Managed</ManagedDir>
+    <ProfileDir Condition="'$(ProfileDir)' == ''">$(APPDATA)\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Default</ProfileDir>
+    <BepInExCore>$(ProfileDir)\BepInEx\core</BepInExCore>
+    <!-- LethalConfig (dépendance optionnelle) : on compile contre la version du cache du mod manager -->
+    <LethalConfigDll Condition="'$(LethalConfigDll)' == ''">$(APPDATA)\Thunderstore Mod Manager\DataFolder\LethalCompany\cache\AinaVT-LethalConfig\1.4.3\plugins\LethalConfig\LethalConfig.dll</LethalConfigDll>
+    <!-- Mettre à false pour ne pas copier le mod dans le profil après compilation -->
+    <DeployToProfile Condition="'$(DeployToProfile)' == ''">true</DeployToProfile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- BepInEx / Harmony -->
+    <Reference Include="BepInEx"><HintPath>$(BepInExCore)\BepInEx.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(BepInExCore)\0Harmony.dll</HintPath><Private>false</Private></Reference>
+
+    <!-- Jeu (publicisé pour accéder aux champs privés) -->
+    <Reference Include="Assembly-CSharp" Publicize="true"><HintPath>$(ManagedDir)\Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Assembly-CSharp-firstpass"><HintPath>$(ManagedDir)\Assembly-CSharp-firstpass.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Facepunch.Steamworks.Win64"><HintPath>$(ManagedDir)\Facepunch.Steamworks.Win64.dll</HintPath><Private>false</Private></Reference>
+
+    <!-- Mods (dépendances optionnelles, non copiées) -->
+    <Reference Include="LethalConfig"><HintPath>$(LethalConfigDll)</HintPath><Private>false</Private></Reference>
+
+    <!-- Unity -->
+    <Reference Include="UnityEngine"><HintPath>$(ManagedDir)\UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Unity.InputSystem"><HintPath>$(ManagedDir)\Unity.InputSystem.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Unity.Netcode.Runtime"><HintPath>$(ManagedDir)\Unity.Netcode.Runtime.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Unity.TextMeshPro"><HintPath>$(ManagedDir)\Unity.TextMeshPro.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="dist\**" />
+    <Compile Remove="dist\**" />
+  </ItemGroup>
+
+  <!-- Debug : copie dans le profil de test du mod manager (les touches F8/F9/F10 n'existent qu'en Debug) -->
+  <Target Name="DeployToProfile" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug' And '$(DeployToProfile)' == 'true' And Exists('$(ProfileDir)')">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ProfileDir)\BepInEx\plugins\LethalKeys" />
+    <Message Importance="high" Text="LethalKeys copié dans $(ProfileDir)\BepInEx\plugins\LethalKeys" />
+  </Target>
+
+  <!-- Release : paquet Thunderstore dans dist\LethalKeys-<version>.zip -->
+  <Target Name="PackThunderstore" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <PropertyGroup>
+      <TsDir>$(MSBuildProjectDirectory)\Thunderstore</TsDir>
+      <DistDir>$(MSBuildProjectDirectory)\dist</DistDir>
+      <StageDir>$(DistDir)\stage</StageDir>
+      <ZipPath>$(DistDir)\LethalKeys-$(Version).zip</ZipPath>
+      <PluginSource>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\Plugin.cs'))</PluginSource>
+      <ManifestJson>$([System.IO.File]::ReadAllText('$(TsDir)\manifest.template.json').Replace('$VERSION$', '$(Version)'))</ManifestJson>
+    </PropertyGroup>
+
+    <Error Condition="!$(PluginSource.Contains('Version = &quot;$(Version)&quot;'))"
+           Text="La version de Plugin.cs ne correspond pas à &lt;Version&gt; du csproj ($(Version))." />
+
+    <RemoveDir Directories="$(StageDir)" />
+    <MakeDir Directories="$(StageDir)" />
+    <!-- Thunderstore refuse un manifest.json avec BOM : sans attribut Encoding, WriteLinesToFile écrit en UTF-8 sans BOM -->
+    <WriteLinesToFile File="$(StageDir)\manifest.json" Lines="$(ManifestJson)" Overwrite="true" />
+    <Copy SourceFiles="$(TsDir)\README.md;$(TsDir)\CHANGELOG.md;$(TsDir)\icon.png;$(TargetPath)" DestinationFolder="$(StageDir)" />
+    <Delete Files="$(ZipPath)" />
+    <ZipDirectory SourceDirectory="$(StageDir)" DestinationFile="$(ZipPath)" />
+    <RemoveDir Directories="$(StageDir)" />
+    <Message Importance="high" Text="Paquet Thunderstore : $(ZipPath)" />
+  </Target>
+
+</Project>

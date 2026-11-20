@@ -1,0 +1,9 @@
+{
+  "name": "LethalKeys",
+  "version_number": "$VERSION$",
+  "website_url": "",
+  "description": "Every time you die, one of your keybinds is randomly reassigned. Keyboard and mouse, conflict-free, saved with your save file. Optional in-game menu with LethalConfig.",
+  "dependencies": [
+    "BepInEx-BepInExPack-5.4.2305"
+  ]
+}
