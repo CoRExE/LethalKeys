@@ -13,7 +13,8 @@ namespace LethalKeys
     {
         public const string Guid = "lethalkeys";
         public const string Name = "LethalKeys";
-        public const string Version = "0.1.0";
+        /// <summary>Vient de &lt;Version&gt; du csproj (ou du tag Git en CI), via BuildInfo généré à la compilation.</summary>
+        public const string Version = BuildInfo.Version;
 
         internal const string ActionsSection = "Actions";
 

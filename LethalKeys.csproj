@@ -19,17 +19,33 @@
     <ManagedDir>$(GameDir)\Lethal Company_Data\Managed</ManagedDir>
     <ProfileDir Condition="'$(ProfileDir)' == ''">$(APPDATA)\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Default</ProfileDir>
     <BepInExCore>$(ProfileDir)\BepInEx\core</BepInExCore>
-    <!-- LethalConfig (dépendance optionnelle) : on compile contre la version du cache du mod manager -->
-    <LethalConfigDll Condition="'$(LethalConfigDll)' == ''">$(APPDATA)\Thunderstore Mod Manager\DataFolder\LethalCompany\cache\AinaVT-LethalConfig\1.4.3\plugins\LethalConfig\LethalConfig.dll</LethalConfigDll>
+    <!-- LethalConfig (dépendance optionnelle) : celui du profil, sinon passé en paramètre (CI : /p:LethalConfigDll=...) -->
+    <LethalConfigDll Condition="'$(LethalConfigDll)' == ''">$(ProfileDir)\BepInEx\plugins\AinaVT-LethalConfig\LethalConfig\LethalConfig.dll</LethalConfigDll>
     <!-- Mettre à false pour ne pas copier le mod dans le profil après compilation -->
     <DeployToProfile Condition="'$(DeployToProfile)' == ''">true</DeployToProfile>
+    <!--
+      Jeu installé → on compile contre ses DLL. Sinon (CI GitHub) → paquets NuGet publics.
+      Forcer l'un ou l'autre : /p:UseLocalGameLibs=true|false
+    -->
+    <UseLocalGameLibs Condition="'$(UseLocalGameLibs)' == '' And Exists('$(ManagedDir)\Assembly-CSharp.dll') And Exists('$(BepInExCore)\BepInEx.dll')">true</UseLocalGameLibs>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2" PrivateAssets="all" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- CI : bibliothèques du jeu (v81), BepInEx et Unity (2022.3.62) via NuGet -->
+  <ItemGroup Condition="'$(UseLocalGameLibs)' != 'true'">
+    <PackageReference Include="LethalCompany.GameLibs.Steam" Version="81.0.5-ngd.0" Publicize="true" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.Core" Version="5.4.21" PrivateAssets="all" />
+    <PackageReference Include="UnityEngine.Modules" Version="2022.3.62" IncludeAssets="compile" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseLocalGameLibs)' != 'true'">
+    <Reference Include="LethalConfig"><HintPath>$(LethalConfigDll)</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseLocalGameLibs)' == 'true'">
     <!-- BepInEx / Harmony -->
     <Reference Include="BepInEx"><HintPath>$(BepInExCore)\BepInEx.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="0Harmony"><HintPath>$(BepInExCore)\0Harmony.dll</HintPath><Private>false</Private></Reference>
@@ -55,6 +71,22 @@
     <Compile Remove="dist\**" />
   </ItemGroup>
 
+  <!--
+    Version unique : <Version> (ou /p:Version=x.y.z, ex. depuis un tag Git en CI).
+    Elle est injectée dans BuildInfo.Version, utilisé par [BepInPlugin], et dans manifest.json.
+  -->
+  <Target Name="GenerateBuildInfo" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <BuildInfoFile>$(IntermediateOutputPath)BuildInfo.g.cs</BuildInfoFile>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(BuildInfoFile)" Overwrite="true" WriteOnlyWhenDifferent="true"
+                      Lines="namespace LethalKeys { internal static class BuildInfo { public const string Version = &quot;$(Version)&quot;%3B } }" />
+    <ItemGroup>
+      <Compile Include="$(BuildInfoFile)" />
+      <FileWrites Include="$(BuildInfoFile)" />
+    </ItemGroup>
+  </Target>
+
   <!-- Debug : copie dans le profil de test du mod manager (les touches F8/F9/F10 n'existent qu'en Debug) -->
   <Target Name="DeployToProfile" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug' And '$(DeployToProfile)' == 'true' And Exists('$(ProfileDir)')">
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ProfileDir)\BepInEx\plugins\LethalKeys" />
@@ -68,12 +100,8 @@
       <DistDir>$(MSBuildProjectDirectory)\dist</DistDir>
       <StageDir>$(DistDir)\stage</StageDir>
       <ZipPath>$(DistDir)\LethalKeys-$(Version).zip</ZipPath>
-      <PluginSource>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\Plugin.cs'))</PluginSource>
       <ManifestJson>$([System.IO.File]::ReadAllText('$(TsDir)\manifest.template.json').Replace('$VERSION$', '$(Version)'))</ManifestJson>
     </PropertyGroup>
-
-    <Error Condition="!$(PluginSource.Contains('Version = &quot;$(Version)&quot;'))"
-           Text="La version de Plugin.cs ne correspond pas à &lt;Version&gt; du csproj ($(Version))." />
 
     <RemoveDir Directories="$(StageDir)" />
     <MakeDir Directories="$(StageDir)" />
